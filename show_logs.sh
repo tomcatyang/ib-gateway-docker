@@ -1,1 +1,1 @@
-docker logs algo-trader-ib-gateway-1 --tail 50
+docker logs algo-trader-ib-gateway-1 --tail  500
