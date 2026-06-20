@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ##############################################################################
 # Setup Stage: install apps
 #
@@ -12,6 +13,10 @@ ENV IB_GATEWAY_VERSION=10.47.1e
 ENV IB_GATEWAY_CHANNEL=latest
 ENV IBC_VERSION=3.23.0
 ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_MIRROR=
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
 ARG IB_GATEWAY_FILE="ibgateway-${IB_GATEWAY_VERSION}-standalone-linux-x64.sh"
 ARG IB_GATEWAY_REPO="https://github.com/gnzsnz/ib-gateway-docker"
 ARG IB_GATEWAY_URL="${IB_GATEWAY_REPO}/releases/download/ibgateway-${IB_GATEWAY_CHANNEL}%40${IB_GATEWAY_VERSION}/${IB_GATEWAY_FILE}"
@@ -24,32 +29,38 @@ ARG ZULU_URL=https://cdn.azul.com/zulu/bin/${ZULU_FILE}
 
 WORKDIR /tmp/setup
 
-# Prepare system
-RUN apt-get update -y && \
-  apt-get install --no-install-recommends --yes \
-  curl ca-certificates unzip && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/* && \
-  if [ "$(uname -m)" = "aarch64" ]; then \
-    curl -sSLO ${ZULU_URL} ; \
-    tar -xzf ${ZULU_FILE} -C /usr/local/ ; \
+# apt 使用镜像源并启用 BuildKit 缓存；apt 不走 HTTP 代理，避免容器内 localhost 代理失效。
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
+  /bin/sh -eux -c '\
+  if [ -n "${APT_MIRROR}" ]; then \
+    sed -i \
+      "s|http://archive.ubuntu.com/ubuntu/|${APT_MIRROR}|g; \
+       s|http://security.ubuntu.com/ubuntu/|${APT_MIRROR}|g" \
+      /etc/apt/sources.list.d/ubuntu.sources; \
+  fi && \
+  apt-get update -y && \
+  apt-get install --no-install-recommends --yes curl ca-certificates unzip && \
+  rm -rf /var/lib/apt/lists/*'
+
+# GitHub 下载可使用构建代理，失败时重试，和 apt 安装阶段分离。
+RUN if [ "$(uname -m)" = "aarch64" ]; then \
+    curl -fsSL --retry 3 ${ZULU_URL} -o ${ZULU_FILE} && \
+    tar -xzf ${ZULU_FILE} -C /usr/local/ && \
     ln -s /usr/local/${ZULU_NAME} /usr/local/zulu17 ; \
   fi && \
-# Install IB Gateway
-# Use this instead of "RUN curl .." to install a local file:
-#COPY ibgateway-${IB_GATEWAY_VERSION}-standalone-linux-x64.sh .
-  curl -sSOL ${IB_GATEWAY_URL} && \
-  curl -sSOL ${IB_GATEWAY_URL}.sha256 && \
-  sha256sum --check ./${IB_GATEWAY_FILE}.sha256 &&\
+  curl -fsSL --retry 3 ${IB_GATEWAY_URL} -o ./${IB_GATEWAY_FILE} && \
+  curl -fsSL --retry 3 ${IB_GATEWAY_URL}.sha256 -o ./${IB_GATEWAY_FILE}.sha256 && \
+  sha256sum --check ./${IB_GATEWAY_FILE}.sha256 && \
   chmod a+x ./${IB_GATEWAY_FILE} && \
   if [ "$(uname -m)" = "aarch64" ]; then \
     app_java_home=/usr/local/zulu17 ./${IB_GATEWAY_FILE} -q -dir /root/Jts/ibgateway/${IB_GATEWAY_VERSION} ; \
   else \
     ./${IB_GATEWAY_FILE} -q -dir /root/Jts/ibgateway/${IB_GATEWAY_VERSION} ; \
   fi && \
-  # Install IBC
-  curl -sSOL ${IBC_URL} && \
-  mkdir /root/ibc && \
+  curl -fsSL --retry 3 ${IBC_URL} -o ./${IBC_FILE} && \
+  mkdir -p /root/ibc && \
   unzip ./${IBC_FILE} -d /root/ibc && \
   chmod -R u+x /root/ibc/*.sh && \
   chmod -R u+x /root/ibc/scripts/*.sh
@@ -82,17 +93,26 @@ ENV IBC_INI_TMPL=${IBC_INI}.tmpl
 ENV SCRIPT_PATH=${HOME}/scripts
 ENV GATEWAY_OR_TWS=gateway
 ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_MIRROR=
 # Copy files
 COPY --from=setup /usr/local/ /usr/local/
 COPY --chown=${USER_ID}:${USER_GID} --from=setup /root/ ${HOME}
 
-# Prepare system
-RUN apt-get update -y && \
-  apt-get upgrade -y && \
+# apt 使用镜像源并启用 BuildKit 缓存；避免每次构建都从默认源慢速下载。
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
+  /bin/sh -eux -c '\
+  if [ -n "${APT_MIRROR}" ]; then \
+    sed -i \
+      "s|http://archive.ubuntu.com/ubuntu/|${APT_MIRROR}|g; \
+       s|http://security.ubuntu.com/ubuntu/|${APT_MIRROR}|g" \
+      /etc/apt/sources.list.d/ubuntu.sources; \
+  fi && \
+  apt-get update -y && \
   apt-get install --no-install-recommends --yes \
   gettext-base socat xvfb x11vnc sshpass openssh-client sudo telnet && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/* && \
+  rm -rf /var/lib/apt/lists/*' && \
   if id ubuntu; then \
     userdel -rf ubuntu \
   ;fi && \

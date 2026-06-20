@@ -4,6 +4,13 @@ services:
     restart: always
     build:
       context: ./latest
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
+      args:
+        APT_MIRROR: ${APT_MIRROR:-http://mirrors.aliyun.com/ubuntu/}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,host.docker.internal,mirrors.aliyun.com,archive.ubuntu.com,security.ubuntu.com,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       tags:
         - "ghcr.io/gnzsnz/ib-gateway:latest"
     image: ghcr.io/gnzsnz/ib-gateway:latest
