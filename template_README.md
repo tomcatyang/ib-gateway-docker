@@ -1,6 +1,8 @@
 # Interactive Brokers Gateway Docker
 
-<img src="https://github.com/gnzsnz/ib-gateway-docker/blob/master/logo.png" height="300" alt="IB Gateway Docker"/>
+[![Build](https://github.com/gnzsnz/ib-gateway-docker/actions/workflows/on-push-n-pr.yml/badge.svg?branch=master)](https://github.com/gnzsnz/ib-gateway-docker/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![GitHub Discussions](https://img.shields.io/github/discussions/gnzsnz/ib-gateway-docker)](https://github.com/gnzsnz/ib-gateway-docker/discussions) [![GitHub Repo stars](https://img.shields.io/github/stars/gnzsnz/ib-gateway-docker)](#repo-stats) [![GitHub forks](https://img.shields.io/github/forks/gnzsnz/ib-gateway-docker)](https://github.com/gnzsnz/ib-gateway-docker/network/members)
+
+<img src="https://github.com/gnzsnz/ib-gateway-docker/blob/master/logo.png" height="300" class="center" alt="IB Gateway Docker"/>
 
 ## What is it?
 
@@ -26,7 +28,7 @@ It includes:
   `10.19.2g-stable` and `10.25.1o-latest` or greater.
 - Support parallel execution of `live` and `paper` trading mode.
 - [Secrets](#credentials) support (latest `10.29.1e`, stable `10.19.2m` or greater)
-- Experimental [aarch64](#aarch64-support) support, ex raspberry pi, M1,M2,M3,.., since `10.37.1l`/`10.39.1e`
+- [aarch64](#aarch64-support) support, ex raspberry pi, M1,M2,M3,.., since `10.37.1l`/`10.39.1e`
 - Execution of custom scripts during [star-up process](#start-up-scripts).
 - Works well together with [Jupyter Quant](https://github.com/quantbelt/jupyter-quant)
   docker image.
@@ -102,7 +104,7 @@ services:
 #    volumes:
 #      - ${PWD}/jts.ini:/home/ibgateway/Jts/jts.ini
 #      - ${PWD}/config.ini:/home/ibgateway/ibc/config.ini
-#      - ${PWD}/tws_settings/:${TWS_SETTINGS_PATH:-/home/ibgateway/Jts}
+#      - ${PWD}/tws_settings/:${TWS_SETTINGS_PATH:-/home/ibgateway/tws_settings}
 #      - ${PWD}/ssh/:/home/ibgateway/.ssh
 #      - ${PWD}/init-scripts:/home/ibgateway/init-scripts
     ports:
@@ -123,7 +125,7 @@ TWS_PASSWORD=myTwsPassword
 #TWS_PASSWORD_PAPER=
 #TWS_PASSWORD_PAPER_FILE=
 # ib-gateway
-#TWS_SETTINGS_PATH=/home/ibgateway/Jts
+#TWS_SETTINGS_PATH=/home/ibgateway/tws_settings
 # tws
 #TWS_SETTINGS_PATH=/config/tws_settings
 TWS_SETTINGS_PATH=
@@ -577,7 +579,10 @@ value in seconds defined in `SSH_RESTART`.
 
 ## aarch64 support
 
-This is experimental, so expects bugs.
+IBKR's has started releasing an installer for `linux-arm`. And this image is
+using it. While the official installer is for `ib-gateway`, we provide an TWS
+image too. So please take into account that TWS image might have unexpected
+bugs.
 
 Please go to discussions section to see common problems. Avoid creating issues unless
 you have empirically probed that is a bug, ie it does not work to me is not a bug.
@@ -659,3 +664,9 @@ https://github.com/gnzsnz/ib-gateway-docker/raw/gh-pages/ibgateway-releases/ibga
 
 [1]: https://github.com/users/gnzsnz/packages/container/package/ib-gateway "ib-gateway"
 [2]: https://github.com/gnzsnz/ib-gateway-docker/pkgs/container/tws-rdesktop "tws-rdesktop"
+
+## Repo stats
+
+Repository stars overtime.
+
+[![Stargazers over time](https://starchart.cc/gnzsnz/ib-gateway-docker.svg?variant=adaptive)](https://starchart.cc/gnzsnz/ib-gateway-docker)
